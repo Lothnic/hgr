@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Modal & Local Logs
+logs/
+*.log
+modal_logs.txt
+new_modal_logs.txt
+recent_modal_logs.txt
+error_log.txt
+
+# Model Artifacts / Weights
+stage1_output/
+stage1_large_output/
+stage2_output/
+archive/
+
+# Datasets and Generations
+dpo_dataset_*.json
+stage2_output_dataset.json
+dpo_dataset_*.csv
+data/archive/
+# Note: Keeping src/hgr/data/parallel.csv and dataset_info.json as they define the project schema, 
+# but ignoring heavy raw generation files if they get moved there.
+src/hgr/data/*.jsonl
+src/hgr/data/*.csv.bak
+
+# Documentation PDFs
+docs/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Package management
+# We commit pyproject.toml and uv.lock, but maybe ignore pip wheels if any
+*.whl
