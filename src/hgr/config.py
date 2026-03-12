@@ -6,6 +6,25 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class RewardConfig:
+    """Configuration for reward functions."""
+    reward_function: str = "hgr"  # Options: "hgr", "bleurt", "comet"
+    
+    # HGR-specific parameters
+    sbert_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    phi: float = 1.0
+    
+    # BLEURT-specific parameters
+    bleurt_model: str = "Elron/bleurt-base-128"
+    
+    # COMET-specific parameters
+    comet_model: str = "Unbabel/wmt22-comet-da"
+    
+    # Device specification
+    device: str = "cuda"
+
+
+@dataclass
 class ModelConfig:
     """Model configuration."""
     # Base seq2seq model to fine-tune
@@ -19,6 +38,8 @@ class ModelConfig:
     # Sequence lengths
     max_source_length: int = 256
     max_target_length: int = 256
+    # Reward function configuration
+    reward_config: RewardConfig = field(default_factory=RewardConfig)
 
 
 @dataclass

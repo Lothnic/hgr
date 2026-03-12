@@ -15,9 +15,10 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
+from hgr.config import ModelConfig, TrainingConfig, RewardConfig
+from hgr.rewards.factory import create_reward_function
+
 from hgr.training.hgr import (
-    compute_sbert_similarity,
-    hypergeometric_gamma_reward,
     compute_seq_log_probs,
     compute_hgr_loss,
 )
@@ -108,8 +109,9 @@ class CombinedTrainer:
     DPO additionally uses a frozen reference copy.
     """
 
-    def __init__(self, model_name, sbert_model_name, training_config):
+    def __init__(self, model_name, reward_config: RewardConfig, training_config: TrainingConfig):
         self.config = training_config
+        self.reward_config = reward_config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -121,7 +123,15 @@ class CombinedTrainer:
         for p in self.ref_model.parameters():
             p.requires_grad = False
 
-        self.sbert_model = SentenceTransformer(sbert_model_name, device=self.device)
+        # Initialize reward function based on config
+        self.reward_function = create_reward_function(
+            reward_type=self.reward_config.reward_function,
+            sbert_model_name=self.reward_config.sbert_model,
+            phi=self.reward_config.phi,
+            bleurt_model_name=self.reward_config.bleurt_model,
+            comet_model_name=self.reward_config.comet_model,
+            device=self.device
+        )
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=training_config.learning_rate
         )
@@ -164,29 +174,31 @@ class CombinedTrainer:
                     max_length=max_len,
                 )
 
-                # --- HGR loss (Eq. 2-4) ---
-                src_inputs = self.tokenizer(
-                    sources, return_tensors="pt", padding=True,
-                    truncation=True, max_length=max_len,
-                ).to(self.device)
-
                 with torch.no_grad():
                     gen_ids = self.model.generate(**src_inputs, max_length=max_len)
                 gen_texts = self.tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
 
-                similarity = compute_sbert_similarity(gen_texts, preferred, self.sbert_model)
-                rewards = hypergeometric_gamma_reward(similarity, phi=self.config.hgr_phi)
+                # COMPUTE REWARDS USING PLUGGABLE REWARD FUNCTION
+                rewards = self.reward_function.compute_rewards(
+                    sources=sources,
+                    references=preferred,  # 'preferred' serves as reference translation
+                    hypotheses=gen_texts
+                )
 
+                # COMPUTE LOG PROBS FOR HYPOTHESES (needed for loss calculation)
                 gen_labels = self.tokenizer(
                     gen_texts, return_tensors="pt", padding=True,
                     truncation=True, max_length=max_len,
-                ).input_ids.to(self.device)
+                ).to(self.device)
                 gen_labels[gen_labels == self.tokenizer.pad_token_id] = -100
 
                 log_probs = compute_seq_log_probs(
                     self.model, src_inputs.input_ids, src_inputs.attention_mask, gen_labels
                 )
-                hgr_loss = compute_hgr_loss(log_probs, rewards.to(self.device))
+
+                # COMPUTE HGR-STYLE LOSS USING THE REWARDS
+                # Note: compute_hgr_loss expects rewards and log_probs tensors
+                hgr_loss = compute_hgr_loss(log_probs, rewards)
 
                 # --- Combined loss (Eq. 5) ---
                 total_loss = compute_combined_loss(

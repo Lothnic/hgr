@@ -61,8 +61,9 @@ def train():
     import torch
     from datasets import Dataset as HFDataset
 
-    from hgr.config import TrainingConfig
+    from hgr.config import TrainingConfig, RewardConfig, ModelConfig
     from hgr.training.combined import CombinedTrainer
+    from hgr.rewards.factory import create_reward_function
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
     logger = logging.getLogger(__name__)
@@ -96,24 +97,30 @@ def train():
     # 2. Config setup
     # From Table 4 in paper: DPO batch 8, LR 5e-5, beta 0.1, phi 1.0, alpha 0.5, gamma 0.5
     # We'll adapt for H100 mt5-large 1.2B (DPO requires 4x forward passes, so we scale down physical batch)
-    cfg = TrainingConfig()
-    cfg.batch_size = 128
-    cfg.gradient_accumulation_steps = 2
+    model_cfg = ModelConfig()
+    train_cfg = TrainingConfig()
+    train_cfg.batch_size = 128
+    train_cfg.gradient_accumulation_steps = 2
     
     # CRITICAL: We've dropped the learning rate back to a highly conservative 1e-5 despite
     # the large 1024 effective batch size. The HGR REINFORCE objective generates high-variance
     # policy gradients, and mT5-small is highly brittle. The previous 5.6e-4 LR caused a 
     # permanent local-minimum representation collapse (model exclusively output token 259).
-    cfg.learning_rate = 1e-5
-    cfg.dpo_beta = 0.05
-    cfg.hgr_phi = 1.0
-    cfg.alpha = 0.2
-    cfg.gamma = 0.8
+    train_cfg.learning_rate = 1e-5
+    train_cfg.dpo_beta = 0.05
+    # Note: hgr_phi is in RewardConfig, not TrainingConfig
+    train_cfg.alpha = 0.2
+    train_cfg.gamma = 0.8
     
     # We lowered the max lengths heavily to fit 1024 batch sizes onto memory
-    cfg.num_epochs = 5 # 10 might be too long, try 5
-    cfg.max_source_length = 48
-    cfg.max_target_length = 48
+    train_cfg.num_epochs = 5 # 10 might be too long, try 5
+    # Override the model config lengths to fit in memory
+    model_cfg.max_source_length = 48
+    model_cfg.max_target_length = 48
+    
+    # Update reward config to use BLEURT
+    model_cfg.reward_config.reward_function = "bleurt"
+    model_cfg.reward_config.bleurt_model = "Elron/bleurt-base-128"
 
     # 3. Initialize Trainer
     logger.info("Initializing Combined DPO+HGR Trainer...")
@@ -124,14 +131,15 @@ def train():
     # We'll subclass/monkeypatch CombinedTrainer here to load PEFT.
     
     class PEFTCombinedTrainer(CombinedTrainer):
-        def __init__(self, base_model_name, lora_path, sbert_name, config):
-            self.config = config
+        def __init__(self, base_model_name, lora_path, reward_config: RewardConfig, training_config: TrainingConfig):
+            self.config = training_config
+            self.reward_config = reward_config
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+            
             from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
             from peft import PeftModel
             import copy
-
+            
             self.tokenizer = AutoTokenizer.from_pretrained(base_model_name)
             
             # Load base with device_map={"": 0} to keep it strictly on a single GPU
@@ -156,19 +164,33 @@ def train():
             self.ref_model.eval()
             for p in self.ref_model.parameters():
                 p.requires_grad = False
-
-            from sentence_transformers import SentenceTransformer
-            self.sbert_model = SentenceTransformer(sbert_name, device=self.device)
+            
+            # Initialize reward function based on config
+            self.reward_function = create_reward_function(
+                reward_type=self.reward_config.reward_function,
+                sbert_model_name=self.reward_config.sbert_model,
+                phi=self.reward_config.phi,
+                bleurt_model_name=self.reward_config.bleurt_model,
+                comet_model_name=self.reward_config.comet_model,
+                device=self.device
+            )
             
             self.optimizer = torch.optim.Adam(
-                self.model.parameters(), lr=config.learning_rate
+                self.model.parameters(), lr=training_config.learning_rate
             )
-
-    trainer = PEFTCombinedTrainer(MODEL_NAME, STAGE1_LORA, SBERT_NAME, cfg)
+    
+    # Setup reward config - using BLEURT reward function
+    reward_cfg = RewardConfig(
+        reward_function="bleurt",
+        bleurt_model="Elron/bleurt-base-128",
+        phi=1.0  # This parameter is ignored for BLEURT but kept for compatibility
+    )
+    
+    trainer = PEFTCombinedTrainer(MODEL_NAME, STAGE1_LORA, reward_cfg, train_cfg)
 
     # 4. Train
     logger.info("Starting training loop...")
-    trainer.train(hf_dataset, num_epochs=cfg.num_epochs, batch_size=cfg.batch_size)
+    trainer.train(hf_dataset, num_epochs=train_cfg.num_epochs, batch_size=train_cfg.batch_size)
 
     # 5. Save model
     logger.info("Saving Stage 2 model...")
