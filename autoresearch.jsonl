@@ -1,0 +1,7 @@
+{"iter":0,"change":"baseline setup (max_len=48,num_beams=1)","bleu":2.3526,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-TMIFoePsNKeVZyWdJx1M1S"}
+{"iter":1,"change":"num_beams 1 -> 4 (max_len=48)","bleu":2.3430,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-fwSBX8FR3dnYNC3yUbKNLu"}
+{"iter":2,"change":"max_len 48 -> 64, num_beams back to 1","bleu":2.8155,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-QVD7yxNeF1UUihW96vB6zw"}
+{"iter":3,"change":"max_len 64 -> 96","bleu":2.5885,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-F3HyV7LPEHaxvy6SA0rrvK"}
+{"iter":4,"change":"num_beams 1 -> 2 with max_len=64","bleu":2.8368,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-R8y2HnHgsBIV0KheSVsrom"}
+{"iter":5,"change":"num_beams 2 -> 3 with max_len=64","bleu":2.9293,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-oqi8VwPaACHzxt8RfZdrFE"}
+{"iter":6,"change":"num_beams 3 -> 4 with max_len=64","bleu":2.8361,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-t8hJ7OopuFc8Z3kTuhScjT"}

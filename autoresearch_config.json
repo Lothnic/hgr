@@ -1,0 +1,10 @@
+{
+  "sample_size": 256,
+  "batch_size": 64,
+  "max_len": 64,
+  "num_beams": 3,
+  "do_sample": false,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "seed": 42
+}
