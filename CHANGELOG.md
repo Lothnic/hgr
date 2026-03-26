@@ -47,3 +47,14 @@
 - Best DPO-only run in this block: **BLEU 5.4359** (iter 9; `lr=1e-5`, `beta=0.2`, `max_steps=90`, `n_train=4096`, train truncation 80/160).
 - Baseline DPO-only run in this block: **BLEU 5.2573** (iter 1).
 - Net improvement across this block: **+0.1786 BLEU**.
+
+## 2026-03-26 — Full cleaned-data pipeline run
+
+- Added cleaning script: `scripts/clean_parallel_data.py`.
+- Cleaned `src/hgr/data/parallel.csv` -> `src/hgr/data/parallel.filtered.csv`.
+  - Final kept rows: 21,114 (from 25,541 parseable rows).
+- Added full-data DPO triplet generation script: `modal_stage2_data_full_clean.py`.
+  - Generated `dpo_dataset_full_clean.json` with 42,228 bidirectional pairs.
+- Ran full-data DPO-only training (`max_steps=300`) on cleaned full dataset.
+- Post-train benchmark (sample_size=512, same decode settings): BLEU **5.0711**.
+- Observation: full-data DPO run regressed vs best smaller-run DPO config (5.4359), likely due residual noise / longer optimization drift; needs validation split + checkpoint selection.

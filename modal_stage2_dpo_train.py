@@ -53,12 +53,13 @@ def train_dpo_only():
     random.seed(cfg.get("seed", 42))
     torch.manual_seed(cfg.get("seed", 42))
 
-    data_path = "/stage2_input/dpo_dataset_30k_sampled.json"
+    data_path = cfg.get("data_path", "/stage2_input/dpo_dataset_30k_sampled.json")
     with open(data_path, "r", encoding="utf-8") as f:
         pairs = json.load(f)
 
     random.shuffle(pairs)
-    n_train = min(int(cfg.get("n_train", 4096)), len(pairs))
+    n_train_cfg = int(cfg.get("n_train", 4096))
+    n_train = len(pairs) if n_train_cfg <= 0 else min(n_train_cfg, len(pairs))
     pairs = pairs[:n_train]
 
     adapter_cfg_path = "/stage1_large_output/adapter_config.json"
