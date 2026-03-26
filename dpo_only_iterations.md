@@ -8,3 +8,4 @@
 | 4 | `max_steps=90` | https://modal.com/apps/lothnic/main/ap-kfr5EUfPzrnPPXIamxlgRU | https://modal.com/apps/lothnic/main/ap-zGkpb0LbEO0AizwjShEUok | 5.3847 | yes |
 | 5 | `n_train=8192` | https://modal.com/apps/lothnic/main/ap-bldcHSq0MZutzQc8CIlJBo | https://modal.com/apps/lothnic/main/ap-GVYV1YyfcO0G1RvoOO94we | 5.2728 | no |
 | 6 | `dpo_beta=0.3` (n_train back 4096) | https://modal.com/apps/lothnic/main/ap-OZCq50N1cyuAgePpIYBPFR | https://modal.com/apps/lothnic/main/ap-zNGlYDher5zGYMNS8FQaHr | 5.2628 | no |
+| 7 | `batch_size=4, grad_accum=4` (same effective batch) | https://modal.com/apps/lothnic/main/ap-wOWlGVSvN1JB0OMAisqRub | https://modal.com/apps/lothnic/main/ap-EMZ6HR3pbcsXYLkaXMLl5n | 5.3446 | no |
