@@ -9,9 +9,9 @@ Fetch: modal volume get hgr-stage1-large / ./stage1_large_output/
 import modal
 
 # ── Modal setup ───────────────────────────────────────────────────────────────
-app = modal.App("hgr-stage1-large-training")
+app = modal.App("hgr-stage1-clean-training")
 
-vol = modal.Volume.from_name("hgr-stage1-large", create_if_missing=True)
+vol = modal.Volume.from_name("hgr-stage1-clean", create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -28,7 +28,7 @@ image = (
         "numpy",
         "scipy",
     )
-    .add_local_file("src/hgr/data/parallel.csv", remote_path="/data/parallel.csv")
+    .add_local_file("src/hgr/data/parallel.filtered.csv", remote_path="/data/parallel.csv")
     .add_local_file("src/hgr/data/dataset_info.json", remote_path="/data/dataset_info.json")
 )
 

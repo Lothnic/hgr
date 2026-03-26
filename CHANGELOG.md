@@ -78,3 +78,9 @@
 - Iteration: retrained DPO on full-clean dataset with subset-focused config (`n_train=4096`, `max_steps=90`, `beta=0.2`, `lr=1e-5`, train truncation 80/160).
 - New score: BLEU **22.3615**, chrF++ **47.5509**.
 - Status: closes most of the gap to Stage1-large (22.4497), remaining delta ≈ **0.0882 BLEU**.
+
+## 2026-03-26 — Ongoing push toward BLEU >= 25
+
+- Iter 21 attempted direction-targeted continuation (`tgt2src` only) from Stage2 checkpoint; result regressed to BLEU 22.2046 (not kept).
+- Started Stage1-clean retraining on filtered corpus (`hgr-stage1-clean` volume) as a higher-ceiling path toward BLEU >= 25.
+- Training run (in progress): https://modal.com/apps/lothnic/main/ap-3sIvITIgBXMx5aeU0UG8SM
