@@ -58,3 +58,15 @@
 - Ran full-data DPO-only training (`max_steps=300`) on cleaned full dataset.
 - Post-train benchmark (sample_size=512, same decode settings): BLEU **5.0711**.
 - Observation: full-data DPO run regressed vs best smaller-run DPO config (5.4359), likely due residual noise / longer optimization drift; needs validation split + checkpoint selection.
+
+## 2026-03-26 — Stage2 evaluated with exact Stage1 protocol
+
+- Added `modal_evaluate_stage2_same_protocol.py` and ran evaluation against Stage1 test set with matching decoding (`num_beams=4`, `max_length=48`).
+- Stage2 DPO (full cleaned-data run) results:
+  - Overall BLEU: 21.8603
+  - Overall chrF++: 46.8517
+  - mhi BLEU: 23.5066
+  - him BLEU: 19.8539
+- Compared with Stage1-large baseline:
+  - Overall BLEU delta: -0.5894
+  - Directionally asymmetric behavior: mhi improved, him regressed.
