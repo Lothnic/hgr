@@ -70,3 +70,11 @@
 - Compared with Stage1-large baseline:
   - Overall BLEU delta: -0.5894
   - Directionally asymmetric behavior: mhi improved, him regressed.
+
+## 2026-03-26 — Autoresearch resumed on same-protocol objective
+
+- Resumed loop with benchmark switched to exact Stage1 protocol evaluator (`modal_evaluate_stage2_same_protocol.py`).
+- Baseline (current full-clean full-data checkpoint): BLEU **21.8603**.
+- Iteration: retrained DPO on full-clean dataset with subset-focused config (`n_train=4096`, `max_steps=90`, `beta=0.2`, `lr=1e-5`, train truncation 80/160).
+- New score: BLEU **22.3615**, chrF++ **47.5509**.
+- Status: closes most of the gap to Stage1-large (22.4497), remaining delta ≈ **0.0882 BLEU**.

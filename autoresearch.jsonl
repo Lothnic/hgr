@@ -17,3 +17,5 @@
 {"iter":16,"change":"max_len=80","bleu":4.0740,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-01k7BtQCSWuODUNc4hNRoO"}
 {"iter":17,"change":"max_len=96","bleu":4.0024,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-ZMpBw0zJagChWcI8FJXYWC"}
 {"iter":18,"change":"sample_size=512 (stability check) with max_len=80","bleu":5.2567,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-5nM6WUqV4MYkZGmxfrxOMR"}
+{"iter":19,"track":"same_protocol","change":"baseline from full-clean full-data checkpoint","metric":"overall_bleu","value":21.8603,"keep":true,"benchmark":"uvx --from modal modal run modal_evaluate_stage2_same_protocol.py","run_url":"https://modal.com/apps/lothnic/main/ap-rtAEFwDvN4wRNsVBONbV3U"}
+{"iter":20,"track":"same_protocol","change":"train on full-clean data with n_train=4096,max_steps=90,beta=0.2,lr=1e-5,max_source=80,max_length=160","metric":"overall_bleu","value":22.3615,"keep":true,"train_run":"https://modal.com/apps/lothnic/main/ap-9hiGsE0PvzLpUdvf9AExEt","eval_run":"https://modal.com/apps/lothnic/main/ap-CyrcH3CDsKcrWFkbldc0f0"}
