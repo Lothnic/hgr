@@ -38,3 +38,12 @@
   - 26,785 lines total vs 25,541 parseable rows → **1,244 malformed rows**.
   - ~**13.01%** noisy-pattern rows; ~**9.26%** severe length-ratio outliers.
 - Next step: move from decode-only tuning to dataset cleaning + retraining on verified aligned pairs; decoding gains are now incremental.
+
+## 2026-03-26 — DPO-only 10-iteration ablation (with per-iteration pushes)
+
+- Implemented `modal_stage2_dpo_train.py` (manual DPO objective, no reward/penalty term).
+- Extended `modal_benchmark_bleu.py` to evaluate `hgr-stage2-dpo` model volume.
+- Ran 10 DPO-only iterations on Modal A10G, pushing each iteration commit.
+- Best DPO-only run in this block: **BLEU 5.4359** (iter 9; `lr=1e-5`, `beta=0.2`, `max_steps=90`, `n_train=4096`, train truncation 80/160).
+- Baseline DPO-only run in this block: **BLEU 5.2573** (iter 1).
+- Net improvement across this block: **+0.1786 BLEU**.
