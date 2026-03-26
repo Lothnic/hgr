@@ -22,3 +22,5 @@
 | 4 | num_beams=2 @ max_len=64 | 2.8368 | yes | pending |
 | 5 | num_beams=3 @ max_len=64 | 2.9293 | yes (best) | pending |
 | 6 | num_beams=4 @ max_len=64 | 2.8361 | no (reverted) | pending |
+| 7 | do_sample=true, temp=0.7, top_p=0.9, num_beams=1 | 2.7836 | no (reverted) | pending |
+| 8 | re-run best deterministic config (max_len=64, num_beams=3) | 2.9295 | yes (new best) | pending |

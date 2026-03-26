@@ -5,3 +5,5 @@
 {"iter":4,"change":"num_beams 1 -> 2 with max_len=64","bleu":2.8368,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-R8y2HnHgsBIV0KheSVsrom"}
 {"iter":5,"change":"num_beams 2 -> 3 with max_len=64","bleu":2.9293,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-oqi8VwPaACHzxt8RfZdrFE"}
 {"iter":6,"change":"num_beams 3 -> 4 with max_len=64","bleu":2.8361,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-t8hJ7OopuFc8Z3kTuhScjT"}
+{"iter":7,"change":"do_sample=true,temperature=0.7,top_p=0.9,num_beams=1","bleu":2.7836,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-wZiBnAqWI7dw3oMMOuzsLD"}
+{"iter":8,"change":"confirm best config max_len=64,num_beams=3,do_sample=false","bleu":2.9295,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-dgRzVHOvkdKsTEZ2kMcP6j"}
