@@ -1,0 +1,12 @@
+{
+  "n_train": 4096,
+  "batch_size": 2,
+  "grad_accum": 8,
+  "learning_rate": 5e-6,
+  "dpo_beta": 0.1,
+  "num_epochs": 1.0,
+  "max_steps": 60,
+  "max_source_length": 64,
+  "max_length": 128,
+  "seed": 42
+}

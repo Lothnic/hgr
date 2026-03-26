@@ -1,5 +1,5 @@
 {
-  "model_volume": "hgr-stage1-large",
+  "model_volume": "hgr-stage2-dpo",
   "sample_size": 512,
   "batch_size": 64,
   "max_len": 80,

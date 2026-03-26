@@ -12,6 +12,7 @@ app = modal.App("hgr-autoresearch-bleu")
 
 vol_stage1 = modal.Volume.from_name("hgr-stage1")
 vol_stage1_large = modal.Volume.from_name("hgr-stage1-large")
+vol_stage2_dpo = modal.Volume.from_name("hgr-stage2-dpo", create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -36,6 +37,7 @@ image = (
     volumes={
         "/stage1_output": vol_stage1,
         "/stage1_large_output": vol_stage1_large,
+        "/stage2_dpo_output": vol_stage2_dpo,
     },
 )
 def run_bleu_benchmark():
@@ -51,7 +53,14 @@ def run_bleu_benchmark():
         cfg = json.load(f)
 
     model_volume = cfg.get("model_volume", "hgr-stage1")
-    model_dir = "/stage1_output" if model_volume == "hgr-stage1" else "/stage1_large_output"
+    if model_volume == "hgr-stage1":
+        model_dir = "/stage1_output"
+    elif model_volume == "hgr-stage1-large":
+        model_dir = "/stage1_large_output"
+    elif model_volume == "hgr-stage2-dpo":
+        model_dir = "/stage2_dpo_output/final_model"
+    else:
+        raise ValueError(f"Unsupported model_volume: {model_volume}")
 
     random.seed(cfg.get("seed", 42))
 
