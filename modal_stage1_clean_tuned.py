@@ -9,9 +9,9 @@ Fetch: modal volume get hgr-stage1-large / ./stage1_large_output/
 import modal
 
 # ── Modal setup ───────────────────────────────────────────────────────────────
-app = modal.App("hgr-stage1-large-training")
+app = modal.App("hgr-stage1-clean-tuned-training")
 
-vol = modal.Volume.from_name("hgr-stage1-large", create_if_missing=True)
+vol = modal.Volume.from_name("hgr-stage1-clean-tuned", create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -28,7 +28,7 @@ image = (
         "numpy",
         "scipy",
     )
-    .add_local_file("src/hgr/data/parallel.csv", remote_path="/data/parallel.csv")
+    .add_local_file("src/hgr/data/parallel.filtered.csv", remote_path="/data/parallel.csv")
     .add_local_file("src/hgr/data/dataset_info.json", remote_path="/data/dataset_info.json")
 )
 
@@ -71,12 +71,12 @@ def train():
         target_col:   str = "tgt"
         model_name:   str = "google/mt5-large"
 
-        epochs:                     int   = 5
-        train_batch_size:           int   = 256 # Aggressive scale up for 80GB H100
-        eval_batch_size:            int   = 256
-        gradient_accumulation_steps:int   = 1     # effective batch = 128
-        learning_rate:              float = 1e-4
-        warmup_ratio:               float = 0.15  # more warmup for stability
+        epochs:                     int   = 8
+        train_batch_size:           int   = 64
+        eval_batch_size:            int   = 64
+        gradient_accumulation_steps:int   = 2     # effective batch = 128
+        learning_rate:              float = 5e-5
+        warmup_ratio:               float = 0.10
         weight_decay:               float = 0.01
         max_input_length:           int   = 48
         max_target_length:          int   = 48
@@ -360,8 +360,8 @@ def train():
     logger.info(f"  Test set    : {cfg.output_dir}/test_set.json")
     logger.info("  Next step   : stage2_generate_unpreferred.py")
     logger.info("=" * 60)
-    logger.info("Results saved to Modal Volume 'hgr-stage1-large'")
-    logger.info("Download with: modal volume get hgr-stage1-large / ./stage1_large_output/")
+    logger.info("Results saved to Modal Volume 'hgr-stage1-clean-tuned'")
+    logger.info("Download with: modal volume get hgr-stage1-clean-tuned / ./stage1_clean_tuned_output/")
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────

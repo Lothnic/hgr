@@ -84,3 +84,10 @@
 - Iter 21 attempted direction-targeted continuation (`tgt2src` only) from Stage2 checkpoint; result regressed to BLEU 22.2046 (not kept).
 - Started Stage1-clean retraining on filtered corpus (`hgr-stage1-clean` volume) as a higher-ceiling path toward BLEU >= 25.
 - Training run (in progress): https://modal.com/apps/lothnic/main/ap-3sIvITIgBXMx5aeU0UG8SM
+
+## 2026-03-26 — Failed clean Stage1 retrain branch
+
+- Ran Stage1 training directly on `parallel.filtered.csv` with original aggressive Stage1 hyperparameters.
+- Result collapsed badly: Overall BLEU **1.7616** (kangri->hindi 1.9173, hindi->kangri 1.5891).
+- Conclusion: this branch is not viable; likely hyperparameter instability/domain shift interaction.
+- Action: reverted `modal_stage1.py` to original baseline wiring and created separate tuned script `modal_stage1_clean_tuned.py` for safer retries.
