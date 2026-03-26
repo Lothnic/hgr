@@ -57,12 +57,28 @@ def train_dpo_only():
     with open(data_path, "r", encoding="utf-8") as f:
         pairs = json.load(f)
 
+    # Optional direction filtering to target asymmetric quality gaps.
+    direction = cfg.get("direction", "all")  # all | src2tgt | tgt2src
+    if direction != "all":
+        # Infer direction from prompt prefix.
+        # src2tgt: translate kangri to hindi
+        # tgt2src: translate hindi to kangri
+        def _is_src2tgt(x):
+            s = x["source"].lower()
+            return "translate kangri to hindi:" in s
+
+        if direction == "src2tgt":
+            pairs = [x for x in pairs if _is_src2tgt(x)]
+        elif direction == "tgt2src":
+            pairs = [x for x in pairs if not _is_src2tgt(x)]
+
     random.shuffle(pairs)
     n_train_cfg = int(cfg.get("n_train", 4096))
     n_train = len(pairs) if n_train_cfg <= 0 else min(n_train_cfg, len(pairs))
     pairs = pairs[:n_train]
 
-    adapter_cfg_path = "/stage1_large_output/adapter_config.json"
+    init_adapter_path = cfg.get("init_adapter_path", "/stage1_large_output")
+    adapter_cfg_path = f"{init_adapter_path}/adapter_config.json"
     with open(adapter_cfg_path, "r", encoding="utf-8") as f:
         adapter_cfg = json.load(f)
     base_model_name = adapter_cfg["base_model_name_or_path"]
@@ -112,14 +128,14 @@ def train_dpo_only():
         torch_dtype=torch.bfloat16,
         device_map={"": 0},
     )
-    model = PeftModel.from_pretrained(base_model, "/stage1_large_output", is_trainable=True)
+    model = PeftModel.from_pretrained(base_model, init_adapter_path, is_trainable=True)
 
     ref_base = AutoModelForSeq2SeqLM.from_pretrained(
         base_model_name,
         torch_dtype=torch.bfloat16,
         device_map={"": 0},
     )
-    ref_model = PeftModel.from_pretrained(ref_base, "/stage1_large_output")
+    ref_model = PeftModel.from_pretrained(ref_base, init_adapter_path)
     ref_model.eval()
     for p in ref_model.parameters():
         p.requires_grad = False
@@ -174,6 +190,8 @@ def train_dpo_only():
                 "max_steps": max_steps,
                 "batch_size": batch_size,
                 "grad_accum": grad_accum,
+                "direction": direction,
+                "init_adapter_path": init_adapter_path,
             },
             f,
             indent=2,
