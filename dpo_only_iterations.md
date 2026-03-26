@@ -10,3 +10,4 @@
 | 6 | `dpo_beta=0.3` (n_train back 4096) | https://modal.com/apps/lothnic/main/ap-OZCq50N1cyuAgePpIYBPFR | https://modal.com/apps/lothnic/main/ap-zNGlYDher5zGYMNS8FQaHr | 5.2628 | no |
 | 7 | `batch_size=4, grad_accum=4` (same effective batch) | https://modal.com/apps/lothnic/main/ap-wOWlGVSvN1JB0OMAisqRub | https://modal.com/apps/lothnic/main/ap-EMZ6HR3pbcsXYLkaXMLl5n | 5.3446 | no |
 | 8 | `learning_rate=8e-6` | https://modal.com/apps/lothnic/main/ap-X6tj1UzY0XcTDwWaB2gU1i | https://modal.com/apps/lothnic/main/ap-0jXDdGyzE75hdwcbvjHOih | 5.3646 | no |
+| 9 | longer train truncation (`max_source_length=80,max_length=160`) | https://modal.com/apps/lothnic/main/ap-CmeM2gwlx8xvkcsJuHh7T1 | https://modal.com/apps/lothnic/main/ap-jPnqokwO2ftG16uVxCuQP1 | 5.4359 | yes |
