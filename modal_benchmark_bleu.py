@@ -11,6 +11,7 @@ import modal
 app = modal.App("hgr-autoresearch-bleu")
 
 vol_stage1 = modal.Volume.from_name("hgr-stage1")
+vol_stage1_large = modal.Volume.from_name("hgr-stage1-large")
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -32,7 +33,10 @@ image = (
     image=image,
     gpu="A10G",
     timeout=3600,
-    volumes={"/stage1_output": vol_stage1},
+    volumes={
+        "/stage1_output": vol_stage1,
+        "/stage1_large_output": vol_stage1_large,
+    },
 )
 def run_bleu_benchmark():
     import json
@@ -45,6 +49,9 @@ def run_bleu_benchmark():
 
     with open("/data/autoresearch_config.json", "r", encoding="utf-8") as f:
         cfg = json.load(f)
+
+    model_volume = cfg.get("model_volume", "hgr-stage1")
+    model_dir = "/stage1_output" if model_volume == "hgr-stage1" else "/stage1_large_output"
 
     random.seed(cfg.get("seed", 42))
 
@@ -74,7 +81,7 @@ def run_bleu_benchmark():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    adapter_cfg_path = "/stage1_output/adapter_config.json"
+    adapter_cfg_path = f"{model_dir}/adapter_config.json"
     base_model_name = "google/mt5-large"
     try:
         with open(adapter_cfg_path, "r", encoding="utf-8") as f:
@@ -90,7 +97,7 @@ def run_bleu_benchmark():
         device_map={"": 0},
     )
 
-    model = PeftModel.from_pretrained(base_model, "/stage1_output")
+    model = PeftModel.from_pretrained(base_model, model_dir)
     model.eval()
 
     batch_size = int(cfg.get("batch_size", 64))
@@ -118,6 +125,9 @@ def run_bleu_benchmark():
                 do_sample=bool(cfg.get("do_sample", False)),
                 temperature=float(cfg.get("temperature", 1.0)),
                 top_p=float(cfg.get("top_p", 1.0)),
+                length_penalty=float(cfg.get("length_penalty", 1.0)),
+                repetition_penalty=float(cfg.get("repetition_penalty", 1.0)),
+                no_repeat_ngram_size=int(cfg.get("no_repeat_ngram_size", 0)),
                 early_stopping=True,
             )
 
@@ -125,7 +135,19 @@ def run_bleu_benchmark():
         preds.extend([p.strip() for p in decoded])
         refs.extend(references)
 
+    def _normalize(s: str) -> str:
+        import re
+        s = s.strip().lower()
+        s = re.sub(r"\s+", " ", s)
+        s = s.replace(" .", ".").replace(" ,", ",")
+        return s
+
+    if bool(cfg.get("normalize_for_bleu", False)):
+        preds = [_normalize(x) for x in preds]
+        refs = [_normalize(x) for x in refs]
+
     bleu = corpus_bleu(preds, [refs]).score
+    print(f"MODEL_VOLUME={model_volume}")
     print(f"SAMPLE_SIZE={sample_size}")
     print(f"FINAL_BLEU={bleu:.4f}")
 

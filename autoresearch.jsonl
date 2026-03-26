@@ -7,3 +7,13 @@
 {"iter":6,"change":"num_beams 3 -> 4 with max_len=64","bleu":2.8361,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-t8hJ7OopuFc8Z3kTuhScjT"}
 {"iter":7,"change":"do_sample=true,temperature=0.7,top_p=0.9,num_beams=1","bleu":2.7836,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-wZiBnAqWI7dw3oMMOuzsLD"}
 {"iter":8,"change":"confirm best config max_len=64,num_beams=3,do_sample=false","bleu":2.9295,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-dgRzVHOvkdKsTEZ2kMcP6j"}
+{"iter":9,"change":"switch model volume to hgr-stage1-large (SEQ_2_SEQ_LM adapter)","bleu":3.8672,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-i0jR4iTISNjlwvJj3KcCKN"}
+{"iter":10,"change":"no_repeat_ngram_size=3","bleu":3.7504,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-HM2DnCSoWoxQtZnozxhCty"}
+{"iter":11,"change":"repetition_penalty=1.1","bleu":3.8987,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-O3aPZXKHthXUn0ph1bTuh1"}
+{"iter":12,"change":"repetition_penalty=1.2","bleu":3.8926,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-G0bLrmFjiv1HJ1FF61PgP0"}
+{"iter":13,"change":"length_penalty=0.8 (with rep=1.1)","bleu":3.8995,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-gAyM0xN6FoGb8MGGOM0scx"}
+{"iter":14,"change":"length_penalty=0.6","bleu":3.8874,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-vhyrjjIzkCFpinjhfvJMbZ"}
+{"iter":15,"change":"length_penalty=1.2","bleu":3.8984,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-pNxUHCvNp8CFuDeTpCjLh5"}
+{"iter":16,"change":"max_len=80","bleu":4.0740,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-01k7BtQCSWuODUNc4hNRoO"}
+{"iter":17,"change":"max_len=96","bleu":4.0024,"keep":false,"run_url":"https://modal.com/apps/lothnic/main/ap-ZMpBw0zJagChWcI8FJXYWC"}
+{"iter":18,"change":"sample_size=512 (stability check) with max_len=80","bleu":5.2567,"keep":true,"run_url":"https://modal.com/apps/lothnic/main/ap-5nM6WUqV4MYkZGmxfrxOMR"}
