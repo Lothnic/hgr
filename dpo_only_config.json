@@ -5,7 +5,7 @@
   "learning_rate": 1e-5,
   "dpo_beta": 0.2,
   "num_epochs": 1.0,
-  "max_steps": 60,
+  "max_steps": 90,
   "max_source_length": 64,
   "max_length": 128,
   "seed": 42
