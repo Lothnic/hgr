@@ -91,3 +91,17 @@
 - Result collapsed badly: Overall BLEU **1.7616** (kangri->hindi 1.9173, hindi->kangri 1.5891).
 - Conclusion: this branch is not viable; likely hyperparameter instability/domain shift interaction.
 - Action: reverted `modal_stage1.py` to original baseline wiring and created separate tuned script `modal_stage1_clean_tuned.py` for safer retries.
+
+## 2026-03-27 — Decode tuning rescued BLEU toward target
+
+- `stage1-clean-tuned` retrain completed but remained non-viable:
+  - Overall BLEU **2.5168** (still collapsed vs baseline).
+- Pivoted to inference-time decode optimization on stable `hgr-stage1-large` checkpoint.
+- Added tunable evaluator: `modal_evaluate_stage1_same_protocol_tunable.py` + `stage1_eval_config.json`.
+- Confirmed baseline-like decode on tunable script:
+  - `beams=4,max_len=48` -> BLEU **22.4433**.
+- Found strong gains from decode params:
+  - `beams=8,max_len=80,len_pen=0.8` -> BLEU **24.1203**.
+  - `beams=8,max_len=96,len_pen=0.6` -> BLEU **24.2524** (best so far).
+- Started next eval run to try crossing BLEU 25:
+  - `beams=10,max_len=96,len_pen=0.4` (running in background process `stage1-decode-eval-b10-lp04`).
