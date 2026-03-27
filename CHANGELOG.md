@@ -113,3 +113,11 @@
 - Result: BLEU **24.2470**, chrF++ **50.3792**.
 - Outcome: slight regression vs best 24.2524 (keep=false).
 - Next: test longer decode with same stable checkpoint (`max_length=128`) now that timeout is no longer the bottleneck.
+
+## 2026-03-27 — Iter 26 decode test result
+
+- Completed `stage1-decode-eval-b8-lp06-l128`.
+- Config: `num_beams=8, max_length=128, length_penalty=0.6, batch_size=8`.
+- Result: BLEU **24.3110**, chrF++ **50.4734**.
+- Outcome: new decode-best (improves over 24.2524), but still below BLEU 25 target.
+- Next: probe stronger search pressure around this point (`num_beams=10`, lower length penalty) with long timeout.
