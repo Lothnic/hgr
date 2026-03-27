@@ -105,3 +105,11 @@
   - `beams=8,max_len=96,len_pen=0.6` -> BLEU **24.2524** (best so far).
 - Started next eval run to try crossing BLEU 25:
   - `beams=10,max_len=96,len_pen=0.4` (running in background process `stage1-decode-eval-b10-lp04`).
+
+## 2026-03-27 — Iter 25 decode test result
+
+- Completed `stage1-decode-eval-b9-lp05` after increasing Modal timeout to 4h.
+- Config: `num_beams=9, max_length=96, length_penalty=0.5, batch_size=12`.
+- Result: BLEU **24.2470**, chrF++ **50.3792**.
+- Outcome: slight regression vs best 24.2524 (keep=false).
+- Next: test longer decode with same stable checkpoint (`max_length=128`) now that timeout is no longer the bottleneck.
