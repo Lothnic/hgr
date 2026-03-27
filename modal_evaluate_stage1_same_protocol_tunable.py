@@ -16,7 +16,7 @@ image = (
 )
 
 
-@app.function(image=image, gpu="A10G", timeout=3600, volumes={"/stage1": vol_stage1})
+@app.function(image=image, gpu="A10G", timeout=14400, volumes={"/stage1": vol_stage1})
 def evaluate():
     import json
     import torch
@@ -61,9 +61,15 @@ def evaluate():
     bleu = BLEU(effective_order=True).corpus_score(preds, [refs]).score
     chrf = CHRF(word_order=2).corpus_score(preds, [refs]).score
 
+    result = {"config": cfg, "overall_bleu": bleu, "overall_chrf": chrf}
+    with open("/stage1/stage1_decode_eval_last.json", "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    vol_stage1.commit()
+
     print(f"CFG={cfg}")
     print(f"OVERALL_BLEU={bleu:.4f}")
     print(f"OVERALL_CHRF={chrf:.4f}")
+    print("RESULT_PATH=/stage1/stage1_decode_eval_last.json")
 
 
 @app.local_entrypoint()
