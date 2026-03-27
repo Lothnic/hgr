@@ -121,3 +121,10 @@
 - Result: BLEU **24.3110**, chrF++ **50.4734**.
 - Outcome: new decode-best (improves over 24.2524), but still below BLEU 25 target.
 - Next: probe stronger search pressure around this point (`num_beams=10`, lower length penalty) with long timeout.
+
+## 2026-03-27 — Iter 27 infrastructure failure (no metric)
+
+- Attempted decode eval with `num_beams=10, max_length=128, length_penalty=0.4, batch_size=6`.
+- Modal app `ap-Jyl5alstT5IpQNIEcM1T9G` shows stopped with no task running; logs indicate app termination after local client disconnect (`Stopping app - local client disconnected`).
+- No BLEU metric was emitted/saved for this trial.
+- Mitigation: rerun detached to decouple run lifecycle from local client heartbeat/network instability.
