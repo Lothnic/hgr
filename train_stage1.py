@@ -87,6 +87,8 @@ def split_pairs(pairs, train_ratio=0.80, val_ratio=0.10, seed=42):
 
 
 def evaluate(model, tokenizer, test_data, batch_size, max_length):
+    from tqdm import tqdm
+
     bleu_fn = BLEU(effective_order=True)
     chrf_fn = CHRF(word_order=2)
 
@@ -95,7 +97,7 @@ def evaluate(model, tokenizer, test_data, batch_size, max_length):
     all_p, all_r = [], []
     by_dir = {"src2tgt": {"p": [], "r": []}, "tgt2src": {"p": [], "r": []}}
 
-    for i in range(0, len(test_data), batch_size):
+    for i in tqdm(range(0, len(test_data), batch_size), desc="Eval"):
         batch = test_data[i : i + batch_size]
         sources = [b["source"] for b in batch]
         targets = [b["target"] for b in batch]
@@ -188,6 +190,7 @@ def main():
         args.model,
         torch_dtype=torch.bfloat16,
         device_map={"": 0} if torch.cuda.is_available() else None,
+        tie_word_embeddings=False,
     )
 
     lora_config = LoraConfig(
@@ -276,6 +279,7 @@ def main():
             AutoModelForSeq2SeqLM.from_pretrained(
                 args.model, torch_dtype=torch.bfloat16,
                 device_map={"": 0} if torch.cuda.is_available() else None,
+                tie_word_embeddings=False,
             ),
             args.output,
         )
