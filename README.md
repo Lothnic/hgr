@@ -1,85 +1,112 @@
 # HGR — Low-Resource Machine Translation with DPO + Hypergeometric-Gamma Reward
 
-An implementation of the two-stage training pipeline for enhancing low-resource language machine translation using Direct Preference Optimization (DPO) combined with a novel Hypergeometric-Gamma Reward (HGR) function, built on top of mT5-large.
+An implementation of the two-stage training pipeline for enhancing low-resource language machine translation using Direct Preference Optimization (DPO) combined with a novel Hypergeometric-Gamma Reward (HGR) function, built on top of mT5.
 
 ## Pipeline Overview
 
-The pipeline consists of three stages executed sequentially:
-
 ### Stage 1: Supervised Fine-Tuning (SFT)
 
-Fine-tunes `mT5-large` on parallel sentence pairs using LoRA adapters. The model learns bidirectional translation (source-to-target and target-to-source) using task prefixes.
+Fine-tunes mT5 on parallel sentence pairs using LoRA adapters. The model learns bidirectional translation (source-to-target and target-to-source) using task prefixes.
 
-- Input: `src/hgr/data/parallel.csv` (parallel corpus) + `dataset_info.json` (language metadata)
+```bash
+uv run python train_stage1.py
+uv run python train_stage1.py --model google/mt5-base --epochs 5 --batch 32
+```
+
+- Input: `src/hgr/data/parallel.csv` + `dataset_info.json`
 - Output: LoRA adapter weights in `stage1_output/`
-- Run: `modal run --detach modal_stage1.py`
 
 ### Stage 2a: DPO Data Generation
 
-Generates "unpreferred" (intentionally imperfect) translations from the Stage 1 model using high-temperature sampling. These are paired with reference translations to create DPO training triplets.
+Generates "unpreferred" translations from the Stage 1 model using high-temperature sampling.
 
-- Input: Stage 1 adapter weights + parallel corpus
-- Output: `stage2_output/dpo_dataset_30k_sampled.json`
-- Run: `uv run python local_stage2_data.py` (local) or `modal run --detach modal_stage2_data.py`
+```bash
+uv run python local_stage2_data.py --lora stage1_output
+uv run python main.py gen-unpreferred --use-stage1 --input src/hgr/data/parallel.csv
+```
 
-### Stage 2b: Combined DPO + HGR Training
+- Input: Stage 1 adapter + parallel corpus
+- Output: DPO triplets JSON (source, preferred, unpreferred)
 
-Trains the model using a combined objective:
+### Stage 2b: Training (DPO / HGR / Combined)
 
-- **DPO Loss** (Eq. 1): Maximizes the gap between preferred and unpreferred translation log-probabilities relative to a frozen reference model.
-- **HGR Loss** (Eq. 2-4): Uses Sentence-BERT cosine similarity to compute a hypergeometric-gamma reward `r = rho * exp(-phi * rho)`, then applies REINFORCE-style policy gradient.
-- **Combined Loss** (Eq. 5): `L = alpha * L_DPO + gamma * L_HGR`
-- **Exponential Gradient Clipping** (EGC): Prevents gradient explosion in later epochs.
+```bash
+uv run python main.py train --method dpo      --data dpo_pairs.json
+uv run python main.py train --method hgr      --data src/hgr/data/parallel.csv
+uv run python main.py train --method combined --data dpo_pairs.json --reward hgr
+```
 
-Run: `modal run --detach modal_stage2_train.py`
+- **DPO Loss**: Maximizes gap between preferred and unpreferred log-probabilities vs a frozen reference model.
+- **HGR Loss**: SBERT cosine similarity → hypergeometric-gamma reward `r = ρ · exp(-φ · ρ)` → REINFORCE policy gradient.
+- **Combined Loss**: `L = α · L_DPO + γ · L_HGR`
+- **Exponential Gradient Clipping**: Prevents gradient explosion in later epochs.
 
-## Evaluation
+### Evaluation
 
-Metrics implemented in `src/hgr/evaluation/metrics.py`:
+```bash
+uv run python main.py evaluate --predictions preds.txt --references refs.txt
+```
 
-- BLEU (SacreBLEU)
-- chrF++
-- METEOR
-- BERTScore
-- Approximate Randomization Test (statistical significance)
-- Cohen's d (effect size)
-
-Run: `uv run python evaluate_stage2.py`
+Metrics: BLEU (SacreBLEU), chrF++, METEOR, BERTScore, Approximate Randomization Test, Cohen's d.
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 uv sync
 
-# 1. Place your parallel corpus at src/hgr/data/parallel.csv (columns: src, tgt)
-# 2. Create src/hgr/data/dataset_info.json with {"src_lang": "...", "tgt_lang": "..."}
+# Place your parallel corpus at src/hgr/data/parallel.csv (columns: src, tgt)
+# Create src/hgr/data/dataset_info.json with {"src_lang": "...", "tgt_lang": "..."}
 
-# 3. Stage 1 — SFT
-modal run --detach modal_stage1.py
+# Clean data (optional)
+uv run python scripts/clean_parallel_data.py
 
-# 4. Stage 2a — Generate DPO data
+# Stage 1 — SFT
+uv run python train_stage1.py
+
+# Stage 2a — Generate DPO triplets
 uv run python local_stage2_data.py
 
-# 5. Stage 2b — DPO+HGR training
-modal run --detach modal_stage2_train.py
+# Stage 2b — Train
+uv run python main.py train --method combined --data dpo_pairs.json
 
-# 6. Evaluate
-uv run python evaluate_stage2.py
+# Evaluate
+uv run python main.py evaluate --predictions preds.txt --references refs.txt
 ```
 
-See [docs/PIPELINE.md](docs/PIPELINE.md) for detailed documentation.
+## Data Cleaning
+
+```bash
+uv run python scripts/clean_parallel_data.py --input src/hgr/data/parallel.csv --output src/hgr/data/parallel.filtered.csv
+```
+
+Filters: empty pairs, exact matches, duplicates, length-ratio outliers, artifact noise, heavy Latin character leakage.
 
 ## Project Structure
 
 ```
-src/hgr/
-  config.py           -- ModelConfig, TrainingConfig, EvalConfig dataclasses
-  data/prepare.py     -- Data loading and unpreferred translation generation
-  training/dpo.py     -- TRL DPOTrainer wrapper (Algorithm 1)
-  training/hgr.py     -- HGR reward computation and REINFORCE loss (Algorithm 2)
-  training/combined.py-- Combined DPO+HGR training loop (Algorithm 3)
-  evaluation/metrics.py -- MT evaluation metrics and significance tests
+├── main.py                  # CLI: prepare-data, gen-unpreferred, train, evaluate
+├── train_stage1.py          # Stage 1 SFT training (local GPU)
+├── local_stage2_data.py     # Stage 2a DPO triplet generation (local GPU)
+├── scripts/
+│   └── clean_parallel_data.py
+└── src/hgr/
+    ├── config.py            # ModelConfig, TrainingConfig, RewardConfig, EvalConfig
+    ├── data/
+    │   ├── prepare.py       # Data loading utilities
+    │   ├── parallel.csv     # Parallel corpus
+    │   └── dataset_info.json
+    ├── training/
+    │   ├── dpo.py           # TRL DPOTrainer wrapper (Algorithm 1)
+    │   ├── hgr.py           # HGR reward + REINFORCE loss (Algorithm 2)
+    │   └── combined.py      # Combined DPO+HGR training (Algorithm 3)
+    ├── evaluation/
+    │   └── metrics.py       # MT evaluation metrics + significance tests
+    └── rewards/
+        ├── base.py          # Reward function ABC
+        ├── factory.py       # Reward factory
+        ├── hgr_reward.py    # SBERT cosine similarity → HGR reward
+        ├── bleurt_reward.py # BLEURT-based reward
+        └── comet_reward.py  # COMET-based reward
 ```
 
 ## References

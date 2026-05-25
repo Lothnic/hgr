@@ -38,6 +38,10 @@ docs/
 .idea/
 .DS_Store
 
+# CommandCode
+.commandcode/
+CLEANUP_REPORT.md
+
 # Package management
 # We commit pyproject.toml and uv.lock, but maybe ignore pip wheels if any
 *.whl
