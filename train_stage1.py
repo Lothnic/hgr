@@ -141,9 +141,9 @@ def main():
     parser.add_argument("--model", default="google/mt5-large")
     parser.add_argument("--output", default="stage1_output")
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch", type=int, default=8)
+    parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--max-len", type=int, default=48)
+    parser.add_argument("--max-len", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 

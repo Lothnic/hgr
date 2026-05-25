@@ -36,8 +36,8 @@ class ModelConfig:
     # Quantization — set True if GPU VRAM < 16GB
     load_in_4bit: bool = False
     # Sequence lengths
-    max_source_length: int = 256
-    max_target_length: int = 256
+    max_source_length: int = 128
+    max_target_length: int = 128
     # Reward function configuration
     reward_config: RewardConfig = field(default_factory=RewardConfig)
 
@@ -46,9 +46,9 @@ class ModelConfig:
 class TrainingConfig:
     """Training hyperparameters from the paper."""
     num_epochs: int = 10
-    batch_size: int = 8
+    batch_size: int = 32
     learning_rate: float = 5e-5
-    gradient_accumulation_steps: int = 1
+    gradient_accumulation_steps: int = 4
     gradient_checkpointing: bool = False
     # DPO temperature β  (controls preference sharpness)
     dpo_beta: float = 0.1
