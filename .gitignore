@@ -10,13 +10,9 @@ venv/
 ENV/
 env/
 
-# Modal & Local Logs
+# Logs
 logs/
 *.log
-modal_logs.txt
-new_modal_logs.txt
-recent_modal_logs.txt
-error_log.txt
 
 # Model Artifacts / Weights
 stage1_output/
