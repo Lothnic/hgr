@@ -141,10 +141,12 @@ def main():
     parser.add_argument("--model", default="google/mt5-large")
     parser.add_argument("--output", default="stage1_output")
     parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch", type=int, default=128)
+    parser.add_argument("--batch", type=int, default=32)
+    parser.add_argument("--eval-batch", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--max-len", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--eval-only", action="store_true", help="Skip training, evaluate existing adapter")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -228,7 +230,7 @@ def main():
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch,
         per_device_eval_batch_size=args.batch,
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=4,
         learning_rate=args.lr,
         warmup_steps=warmup_steps,
         weight_decay=0.01,
@@ -261,13 +263,25 @@ def main():
     )
 
     logger.info(f"Training | batch={args.batch} | lr={args.lr}")
-    trainer.train()
+    if not args.eval_only:
+        trainer.train()
 
-    model.save_pretrained(args.output)
-    tokenizer.save_pretrained(args.output)
-    logger.info(f"Model saved to {args.output}")
+    if not args.eval_only:
+        model.save_pretrained(args.output)
+        tokenizer.save_pretrained(args.output)
+        logger.info(f"Model saved to {args.output}")
+    else:
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(
+            AutoModelForSeq2SeqLM.from_pretrained(
+                args.model, torch_dtype=torch.bfloat16,
+                device_map={"": 0} if torch.cuda.is_available() else None,
+            ),
+            args.output,
+        )
+        logger.info(f"Loaded adapter from {args.output} for eval")
 
-    results = evaluate(model, tokenizer, test_data, args.batch, args.max_len)
+    results = evaluate(model, tokenizer, test_data, args.eval_batch, args.max_len)
     results["config"] = {
         "model": args.model, "epochs": args.epochs,
         "batch": args.batch, "lr": args.lr,
