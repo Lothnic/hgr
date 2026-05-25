@@ -12,7 +12,6 @@ import copy
 import torch
 import torch.nn.functional as F
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
 from hgr.config import ModelConfig, TrainingConfig, RewardConfig
@@ -163,7 +162,10 @@ class CombinedTrainer:
                 preferred = batch["preferred"]
                 unpreferred = batch["unpreferred"]
 
-
+                src_inputs = self.tokenizer(
+                    sources, return_tensors="pt", padding=True,
+                    truncation=True, max_length=max_len,
+                ).to(self.device)
 
                 # --- DPO loss (Eq. 1) ---
                 dpo_loss = compute_dpo_loss(

@@ -1,109 +1,148 @@
-import os, json, re, logging, random
+#!/usr/bin/env python3
+"""
+Stage 2a: Generate DPO triplets locally using the Stage 1 adapter.
+
+Generates "unpreferred" translations via high-temperature sampling from the
+Stage 1 model, producing (source, preferred, unpreferred) triplets for DPO.
+
+Usage:
+    uv run python local_stage2_data.py
+    uv run python local_stage2_data.py --lora stage1_output --output dpo_pairs.json
+    uv run python local_stage2_data.py --clean-data --data src/hgr/data/parallel.filtered.csv
+"""
+import argparse
+import json
+import logging
+import os
+import random
+import re
+
 import pandas as pd
 import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from peft import PeftModel
 from tqdm import tqdm
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+logging.basicConfig(
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.INFO,
+)
 logger = logging.getLogger(__name__)
 
-DATA_PATH = "src/hgr/data/parallel.csv"
-INFO_PATH = "src/hgr/data/dataset_info.json"
-OUTPUT_PATH = "stage2_output/dpo_dataset_30k_sampled.json"
-MODEL_NAME = "google/mt5-large"
-LORA_PATH = "stage1_output"
 
-with open(INFO_PATH, "r", encoding="utf-8") as f:
-    lang_data = json.load(f)
+def clean_text(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    return re.sub(r"\s+", " ", text.strip().strip("\"'"))
 
-SOURCE_LANG = lang_data["src_lang"]
-TARGET_LANG = lang_data["tgt_lang"]
-SOURCE_COL = "src"
-TARGET_COL = "tgt"
-
-PREFIX_MHI = f"translate {SOURCE_LANG} to {TARGET_LANG}: "
-PREFIX_HIM = f"translate {TARGET_LANG} to {SOURCE_LANG}: "
-
-BATCH_SIZE = 64
-MAX_LEN = 48
-NUM_SAMPLES = 30000
 
 def main():
-    logger.info(f"Loading data from {DATA_PATH}")
-    df = pd.read_csv(DATA_PATH, encoding="utf-8")
-    
-    def clean_text(text):
-        if not isinstance(text, str): return ""
-        return re.sub(r"\s+", " ", text.strip().strip("\"'"))
+    parser = argparse.ArgumentParser(description="Generate DPO triplets from Stage 1 adapter")
+    parser.add_argument("--data", default="src/hgr/data/parallel.csv")
+    parser.add_argument("--lang-info", default="src/hgr/data/dataset_info.json")
+    parser.add_argument("--lora", default="stage1_output")
+    parser.add_argument("--output", default="dpo_pairs.json")
+    parser.add_argument("--model", default="google/mt5-large")
+    parser.add_argument("--sample", type=int, default=30000, help="Max pairs to generate")
+    parser.add_argument("--batch", type=int, default=32)
+    parser.add_argument("--max-len", type=int, default=48)
+    parser.add_argument("--temperature", type=float, default=1.2)
+    parser.add_argument("--top-p", type=float, default=0.9)
+    parser.add_argument("--clean-data", action="store_true")
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
 
-    df[SOURCE_COL] = df[SOURCE_COL].apply(clean_text)
-    df[TARGET_COL] = df[TARGET_COL].apply(clean_text)
-    df = df[(df[SOURCE_COL].str.len() > 0) & (df[TARGET_COL].str.len() > 0)]
-    df = df.drop_duplicates(subset=[SOURCE_COL, TARGET_COL]).reset_index(drop=True)
+    random.seed(args.seed)
+
+    with open(args.lang_info, "r", encoding="utf-8") as f:
+        lang_data = json.load(f)
+    src_lang = lang_data["src_lang"]
+    tgt_lang = lang_data["tgt_lang"]
+
+    if args.clean_data:
+        args.data = "src/hgr/data/parallel.filtered.csv"
+        logger.info("Using cleaned dataset (--clean-data): parallel.filtered.csv")
+
+    logger.info(f"Loading {src_lang} <-> {tgt_lang} from {args.data}")
+    df = pd.read_csv(args.data, encoding="utf-8")
+    df["src"] = df["src"].apply(clean_text)
+    df["tgt"] = df["tgt"].apply(clean_text)
+    df = df[(df["src"].str.len() > 0) & (df["tgt"].str.len() > 0)]
+    df = df.drop_duplicates(subset=["src", "tgt"]).reset_index(drop=True)
+    logger.info(f"Clean pairs: {len(df)}")
+
+    prefix_src2tgt = f"translate {src_lang} to {tgt_lang}: "
+    prefix_tgt2src = f"translate {tgt_lang} to {src_lang}: "
 
     pairs = []
     for _, row in df.iterrows():
-        pairs.append({"source": PREFIX_MHI + row[SOURCE_COL], "preferred": row[TARGET_COL]})
-        pairs.append({"source": PREFIX_HIM + row[TARGET_COL], "preferred": row[SOURCE_COL]})
+        pairs.append({"source": prefix_src2tgt + row["src"], "preferred": row["tgt"]})
+        pairs.append({"source": prefix_tgt2src + row["tgt"], "preferred": row["src"]})
 
-    random.seed(42)
     random.shuffle(pairs)
-    pairs = pairs[:NUM_SAMPLES]
+    total = min(args.sample, len(pairs))
+    pairs = pairs[:total]
+    logger.info(f"Generating unpreferred translations for {len(pairs)} pairs")
 
-    logger.info(f"Total pairs to generate: {len(pairs)}")
-
-    logger.info("Loading Base Model + Stage 1 LoRA")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    
-    # We use float32 or bfloat16 depending on RTX 4060 compatibility
-    dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float32
-    
-    base_model = AutoModelForSeq2SeqLM.from_pretrained(
-        MODEL_NAME, 
-        torch_dtype=dtype, 
-        device_map={"": 0} if torch.cuda.is_available() else None
+    dtype = (
+        torch.bfloat16
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+        else torch.float32
     )
-    
-    if not os.path.exists(os.path.join(LORA_PATH, "adapter_model.safetensors")):
-        raise FileNotFoundError(f"Missing LoRA weights in {LORA_PATH}")
-        
-    model = PeftModel.from_pretrained(base_model, LORA_PATH)
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    base_model = AutoModelForSeq2SeqLM.from_pretrained(
+        args.model,
+        torch_dtype=dtype,
+        device_map={"": 0} if torch.cuda.is_available() else None,
+    )
+
+    lora_path = os.path.join(args.lora, "adapter_model.safetensors")
+    if not os.path.exists(lora_path):
+        raise FileNotFoundError(
+            f"LoRA weights not found at {args.lora}/. Run train_stage1.py first."
+        )
+
+    model = PeftModel.from_pretrained(base_model, args.lora)
     model.eval()
 
-    logger.info("Generating HIGH-TEMPERATURE translations for UNPREFERRED DPO target...")
-    
-    for i in tqdm(range(0, len(pairs), BATCH_SIZE)):
-        batch_pairs = pairs[i : i + BATCH_SIZE]
-        sources = [p["source"] for p in batch_pairs]
-        
-        # Disable padding to right
+    logger.info(
+        f"Generating with temperature={args.temperature}, top_p={args.top_p}"
+    )
+    for i in tqdm(range(0, len(pairs), args.batch)):
+        batch = pairs[i : i + args.batch]
+        sources = [p["source"] for p in batch]
+
         inputs = tokenizer(
-            sources, return_tensors="pt", padding=True, truncation=True, max_length=MAX_LEN
+            sources,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=args.max_len,
         ).to(device)
 
         with torch.no_grad():
             out = model.generate(
                 **inputs,
-                max_length=MAX_LEN,
-                do_sample=True,          # Force sampling instead of beam search/greedy
-                temperature=1.2,         # High temperature to introduce grammatical flaws 
-                top_p=0.9,               # Nucleus sampling
-                early_stopping=True
+                max_length=args.max_len,
+                do_sample=True,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                early_stopping=True,
             )
-        
-        preds = [p.strip() for p in tokenizer.batch_decode(out, skip_special_tokens=True)]
-        
-        for p, pair in zip(preds, batch_pairs):
-            pair["unpreferred"] = p
 
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    logger.info(f"Saving DPO triplets to {OUTPUT_PATH}")
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        preds = [p.strip() for p in tokenizer.batch_decode(out, skip_special_tokens=True)]
+        for pred, pair in zip(preds, batch):
+            pair["unpreferred"] = pred
+
+    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
         json.dump(pairs, f, ensure_ascii=False, indent=2)
 
-    logger.info("Done! Remember to upload this to the Modal volume before training.")
+    logger.info(f"Saved {len(pairs)} DPO triplets to {args.output}")
+
 
 if __name__ == "__main__":
     main()
